@@ -28,7 +28,7 @@ router.post('/login/:type', async (req, res) => {
   if (!doc || !(await bcrypt.compare(password, doc.password)))
     return res.status(401).json({ error: 'Invalid credentials' });
   const token = jwt.sign({ id: doc._id, type: req.params.type,doc:doc }, process.env.JWT_SECRET);
-  res.json({ token, name: doc.name });
+  res.json({ token, name: doc.name,doc:doc });
 });
 
 export default router;
