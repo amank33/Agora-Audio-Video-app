@@ -6,10 +6,8 @@ import authenticate from '../middleware/auth.js';
 const router = express.Router();
 
 // Get all users (for hosts)
-router.get('/users', authenticate, async (req, res) => {
-  if (req.user.type !== 'host') {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+router.get('/users', async (req, res) => {
+
   try {
     const users = await User.find({}, 'name email'); // Only return name and email
     res.json(users);
@@ -19,10 +17,8 @@ router.get('/users', authenticate, async (req, res) => {
 });
 
 // Get all hosts (for users)
-router.get('/hosts', authenticate, async (req, res) => {
-  if (req.user.type !== 'user') {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+router.get('/hosts', async (req, res) => {
+  
   try {
     const hosts = await Host.find({}, 'name email bio'); // Return name, email, and bio
     res.json(hosts);
