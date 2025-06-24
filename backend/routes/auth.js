@@ -20,35 +20,35 @@ router.post('/signup/host', async (req, res) => {
 
   // Check for empty fields
   if (!name || !email || !password || !gender || !phone || !dob) {
-    return res.status(400).json({ error: 'All fields are required.' });
+    return res.status(400).json({ error: 'All fields are required.', status: 'error' });
   }
 
   // Validate fields
   if (!nameRegex.test(name)) {
-    return res.status(400).json({ error: 'Invalid name.' });
+    return res.status(400).json({ error: 'Invalid name.' , status: 'error'});
   }
   if (!emailRegex.test(email)) {
-    return res.status(400).json({ error: 'Invalid email.' });
+    return res.status(400).json({ error: 'Invalid email.', status: 'error'});
   }
   if (!genderRegex.test(gender)) {
-    return res.status(400).json({ error: 'Invalid gender.' });
+    return res.status(400).json({ error: 'Invalid gender.', status: 'error' });
   }
   if (!phoneRegex.test(phone)) {
-    return res.status(400).json({ error: 'Invalid phone number.' });
+    return res.status(400).json({ error: 'Invalid phone number.', status: 'error' });
   }
   if (!dobRegex.test(dob)) {
-    return res.status(400).json({ error: 'Invalid date of birth. Use dd/mm/yyyy.' });
+    return res.status(400).json({ error: 'Invalid date of birth. Use dd/mm/yyyy.', status: 'error' });
   }
   if (!passwordRegex.test(password)) {
-    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    return res.status(400).json({ error: 'Password must be at least 6 characters.', status: 'error' });
   }
 
-  const exists = await Host.findOne({ email });
-  if (exists) return res.status(409).json({ error: 'Email exists' });
+  const exists = await Host.findOne({ email,phone });
+  if (exists) return res.status(409).json({ error: 'Email or phone number exists', status: 'error' });
   const hashed = await bcrypt.hash(password, 10);
   const host = new Host({ name, email, password: hashed, bio, gender, phone, dob });
   await host.save();
-  res.sendStatus(201);
+  res.sendStatus(201).json({ message: 'Host registered successfully',status: 'success' });
 });
 
 // User signup
@@ -62,18 +62,32 @@ router.post('/signup/user', async (req, res) => {
   res.sendStatus(201);
 });
 
-router.post('/login/:type', async (req, res) => {
+// Host login (email or phone)
+router.post('/login/host', async (req, res) => {
+  const { email, phone, password } = req.body;
+  if ((!email && !phone) || !password) {
+    return res.status(400).json({ error: 'Email or phone and password are required.',status: 'error' });
+  }
+  const host = await Host.findOne(email ? { email } : { phone });
+  if (!host || !(await bcrypt.compare(password, host.password))) {
+    return res.status(401).json({ error: 'Invalid credentials',status: 'error' });
+  }
+  const token = jwt.sign({ id: host._id, type: 'host' }, process.env.JWT_SECRET);
+  res.json({ data: host, token, name: host.name, status: 'success'  });
+});
+
+// User login (email only)
+router.post('/login/user', async (req, res) => {
   const { email, password } = req.body;
-  console.log(email, password);
-  const Model = req.params.type === 'host' ? Host : User;
-  console.log(Model);
-  console.log(req.params.type);
-  const doc = await Model.findOne({ email });
-  console.log(doc);
-  if (!doc || !(await bcrypt.compare(password, doc.password)))
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required.' });
+  }
+  const user = await User.findOne({ email });
+  if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ error: 'Invalid credentials' });
-  const token = jwt.sign({ id: doc._id, type: req.params.type }, process.env.JWT_SECRET);
-  res.json({ data:doc, token, name: doc.name });
+  }
+  const token = jwt.sign({ id: user._id, type: 'user' }, process.env.JWT_SECRET);
+  res.json({ data: user, token, name: user.name });
 });
 
 export default router;

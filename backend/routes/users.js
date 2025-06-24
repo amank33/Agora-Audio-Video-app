@@ -9,10 +9,10 @@ const router = express.Router();
 router.get('/users', async (req, res) => {
   
   try {
-    const users = await User.find({}, 'name email'); // Only return name and email
-    res.json(users);
+    const users = await User.find({}); // Only return name and email
+    res.status(201).json({users, success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error', status: 'error' });
   }
 });
 
@@ -20,10 +20,10 @@ router.get('/users', async (req, res) => {
 router.get('/hosts', async (req, res) => {
   
   try {
-    const hosts = await Host.find({}, 'name email bio'); // Return name, email, and bio
-    res.json(hosts);
+    const hosts = await Host.find({}); // Return name, email, and bio
+    res.status(201).json({ hosts, success: true });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error', status: 'error' });
   }
 });
 
