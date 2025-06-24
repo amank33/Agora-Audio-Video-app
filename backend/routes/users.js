@@ -7,7 +7,7 @@ const router = express.Router();
 
 // Get all users (for hosts)
 router.get('/users', async (req, res) => {
-
+  
   try {
     const users = await User.find({}, 'name email'); // Only return name and email
     res.json(users);
