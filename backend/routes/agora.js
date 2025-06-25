@@ -38,7 +38,7 @@ const generateRtcToken = async (req, res) => {
     }
   }
 
-  res.json({ token, channel, uid , status: 'success' });
+  res.status(201).json({ token, channel, uid , status: 'success' });
 };
 
 const generateRtmToken = async (req, res) => {
@@ -69,7 +69,7 @@ const generateRtmToken = async (req, res) => {
     }
   }
 
-    res.json({ token, uid, status: 'success' });
+    res.status(201).json({ token, uid, status: 'success' });
 };
 
 router.get('/token', authenticate, generateRtcToken);
