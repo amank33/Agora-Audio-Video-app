@@ -135,7 +135,7 @@ router.post('/login/user', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials', status: 'error' });
     }
 
-    const token = jwt.sign({ id: user._id, type: 'host' }, process.env.JWT_SECRET);
+    const token = jwt.sign({ id: user._id, type: 'user' }, process.env.JWT_SECRET);
     res.status(200).json({ data: user, token, name: user.name, status: 'success' });
   } catch (err) {
     res.status(500).json({ error: 'Internal server error', status: 'error' });
