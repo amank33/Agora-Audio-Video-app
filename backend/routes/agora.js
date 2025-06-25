@@ -59,7 +59,7 @@ const generateRtmToken = async (req, res) => {
 
     // Store RTM token in User if uid matches
     if (uid) {
-      let userData=await User.findOneAndUpdate({ email: uid }, { rtmToken: token });
+      let userData=await User.findOneAndUpdate({ _id: uid }, { rtmToken: token });
       if (!userData) {
         // If no user found, try to find by _id
         let hostdata = await Host.findOneAndUpdate({ _id: uid }, { rtmToken: token });
