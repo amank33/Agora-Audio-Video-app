@@ -106,7 +106,7 @@ router.post('/login/host', async (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials',status: 'error' });
   }
   const token = jwt.sign({ id: host._id, type: 'host' }, process.env.JWT_SECRET);
-  res.json({ data: host, token, name: host.name, status: 'success'  });
+  res.status(201).json({ data: host, token, name: host.name, status: 'success'  });
 });
 
 // User login (email or phone)
