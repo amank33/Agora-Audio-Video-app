@@ -48,7 +48,7 @@ router.post('/signup/host', async (req, res) => {
   const hashed = await bcrypt.hash(password, 10);
   const host = new Host({ name, email, password: hashed, bio, gender, phone, dob });
   await host.save();
-  res.sendStatus(201).json({ message: 'Host registered successfully',status: 'success' });
+  res.status(201).json({ message: 'Host registered successfully',status: 'success' });
 });
 
 // User signup
@@ -92,7 +92,7 @@ router.post('/signup/user', async (req, res) => {
   const hashed = await bcrypt.hash(password, 10);
   const user = new User({ name, email, password: hashed, bio, gender, phone, dob });
   await user.save();
-  res.sendStatus(201).json({ message: 'User registered successfully',status: 'success' });
+  res.status(201).json({ message: 'User registered successfully',status: 'success' });
 });
 
 // Host login (email or phone)
@@ -120,7 +120,7 @@ router.post('/login/user', async (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials',status: 'error' });
   }
   const token = jwt.sign({ id: user._id, type: 'user' }, process.env.JWT_SECRET);
-  res.json({ data: user, token, name: user.name, status: 'success'  });
+  res.status(201).json({ data: user, token, name: user.name, status: 'success'  });
 });
 
 export default router;
