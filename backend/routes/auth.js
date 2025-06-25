@@ -95,32 +95,53 @@ router.post('/signup/user', async (req, res) => {
   res.status(201).json({ message: 'User registered successfully',status: 'success' });
 });
 
-// Host login (email or phone)
 router.post('/login/host', async (req, res) => {
-  const { email, phone, password } = req.body;
-  if ((!email && !phone) || !password) {
-    return res.status(400).json({ error: 'Email or phone and password are required.',status: 'error' });
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email/Phone and password are required.', status: 'error' });
   }
-  const host = await Host.findOne(email ? { email } : { phone });
-  if (!host || !(await bcrypt.compare(password, host.password))) {
-    return res.status(401).json({ error: 'Invalid credentials',status: 'error' });
+
+  // Check if the input is an email or a phone
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const query = isEmail ? { email } : { phone: email };
+
+  try {
+    const host = await Host.findOne(query);
+    if (!host || !(await bcrypt.compare(password, host.password))) {
+      return res.status(401).json({ error: 'Invalid credentials', status: 'error' });
+    }
+
+    const token = jwt.sign({ id: host._id, type: 'host' }, process.env.JWT_SECRET);
+    res.status(200).json({ data: host, token, name: host.name, status: 'success' });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal server error', status: 'error' });
   }
-  const token = jwt.sign({ id: host._id, type: 'host' }, process.env.JWT_SECRET);
-  res.status(201).json({ data: host, token, name: host.name, status: 'success'  });
+});
+router.post('/login/user', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email/Phone and password are required.', status: 'error' });
+  }
+
+  // Check if the input is an email or a phone
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const query = isEmail ? { email } : { phone: email };
+
+  try {
+    const user = await User.findOne(query);
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ error: 'Invalid credentials', status: 'error' });
+    }
+
+    const token = jwt.sign({ id: user._id, type: 'host' }, process.env.JWT_SECRET);
+    res.status(200).json({ data: user, token, name: user.name, status: 'success' });
+  } catch (err) {
+    res.status(500).json({ error: 'Internal server error', status: 'error' });
+  }
 });
 
-// User login (email or phone)
-router.post('/login/user', async (req, res) => {
-  const { email, phone, password } = req.body;
-  if ((!email && !phone) || !password) {
-    return res.status(400).json({ error: 'Email or phone and password are required.',status: 'error' });
-  }
-  const user = await User.findOne(email ? { email } : { phone });
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(401).json({ error: 'Invalid credentials',status: 'error' });
-  }
-  const token = jwt.sign({ id: user._id, type: 'user' }, process.env.JWT_SECRET);
-  res.status(201).json({ data: user, token, name: user.name, status: 'success'  });
-});
+
 
 export default router;
