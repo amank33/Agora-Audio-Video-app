@@ -48,7 +48,7 @@ router.post('/signup/host', async (req, res) => {
   const hashed = await bcrypt.hash(password, 10);
   const host = new Host({ name, email, password: hashed, bio, gender, phone, dob });
   await host.save();
-  res.status(201).json({ message: 'Host registered successfully',status: 'success' });
+  res.status(201).json({ message: 'Host registered successfully',status: 'success',data:host,id:host._id });
 });
 
 // User signup
@@ -92,7 +92,7 @@ router.post('/signup/user', async (req, res) => {
   const hashed = await bcrypt.hash(password, 10);
   const user = new User({ name, email, password: hashed, bio, gender, phone, dob });
   await user.save();
-  res.status(201).json({ message: 'User registered successfully',status: 'success' });
+  res.status(201).json({ message: 'User registered successfully',status: 'success',data:user,id:user._id });
 });
 
 router.post('/login/host', async (req, res) => {
