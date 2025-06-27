@@ -20,21 +20,31 @@ const storage = multer.diskStorage({
 
 // File filter to allow images and videos
 const fileFilter = (req, file, cb) => {
-  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
   const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-ms-wmv'];
   
+  // For profile and additional photos
   if (file.fieldname === 'profilePhoto' || file.fieldname === 'additionalPhotos') {
     if (allowedImageTypes.includes(file.mimetype)) {
       return cb(null, true);
     }
-    return cb(new Error('Invalid file type. Only JPEG, JPG, and PNG files are allowed for photos.'), false);
+    return cb(new Error('Invalid file type. Only JPEG, JPG, PNG, and PDF files are allowed for photos.'), false);
   }
   
+  // For audition videos
   if (file.fieldname === 'auditionVideo') {
     if (allowedVideoTypes.includes(file.mimetype)) {
       return cb(null, true);
     }
     return cb(new Error('Invalid file type. Only MP4, MOV, AVI, and WMV video formats are allowed.'), false);
+  }
+  
+  // For Aadhar card uploads
+  if (file.fieldname === 'aadharFront' || file.fieldname === 'aadharBack') {
+    if (allowedImageTypes.includes(file.mimetype)) {
+      return cb(null, true);
+    }
+    return cb(new Error('Invalid file type. Only JPEG, JPG, PNG, and PDF files are allowed for Aadhar card.'), false);
   }
   
   cb(new Error('Invalid field name'), false);
@@ -44,8 +54,9 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB limit for videos
-    files: 10
+    fileSize: 5 * 1024 * 1024, // 5MB limit per file
+    files: 10,
+    fieldSize: 10 * 1024 * 1024 // 10MB max request size
   },
   fileFilter: fileFilter
 });
@@ -91,6 +102,10 @@ const checkVideoDuration = async (req, res, next) => {
 export const uploadProfilePhoto = upload.single('profilePhoto');
 export const uploadAdditionalPhotos = upload.array('additionalPhotos', 10); // Max 10 files
 export const uploadAuditionVideo = upload.single('auditionVideo');
+export const uploadAadharCard = upload.fields([
+  { name: 'aadharFront', maxCount: 1 },
+  { name: 'aadharBack', maxCount: 1 }
+]);
 
 export const handleFileUpload = (req, res, next) => {
   if (!req.file && !req.files) {

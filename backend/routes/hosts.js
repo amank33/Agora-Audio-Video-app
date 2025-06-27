@@ -4,6 +4,7 @@ import {
   uploadProfilePhoto, 
   uploadAdditionalPhotos, 
   uploadAuditionVideo, 
+  uploadAadharCard,
   handleFileUpload, 
   checkVideoDuration 
 } from '../middleware/upload.js';
@@ -303,6 +304,224 @@ router.delete('/:id/audition-video', async (req, res, next) => {
       message: 'Audition video deleted successfully' 
     });
   } catch (error) {
+    next(error);
+  }
+});
+
+// Helper function to validate Aadhar number
+const isValidAadharNumber = (number) => {
+  if (!number) return true; // Optional field
+  const aadharRegex = /^\d{12}$/;
+  return aadharRegex.test(number);
+};
+
+// Upload or update Aadhar card
+router.post(
+  '/:id/aadhar-card',
+  uploadAadharCard,
+  handleFileUpload,
+  async (req, res, next) => {
+    try {
+      const { aadharNumber } = req.body;
+      const files = req.files;
+
+      // Validate request
+      if ((!files || !files.aadharFront) && !aadharNumber) {
+        // Clean up uploaded files if any
+        if (files) {
+          Object.values(files).forEach(fileArray => {
+            fileArray.forEach(file => deleteFile(file.filename));
+          });
+        }
+        return res.status(400).json({
+          status: 'error',
+          message: 'Aadhar front image or Aadhar number is required'
+        });
+      }
+
+      // Validate Aadhar number format
+      if (aadharNumber && !isValidAadharNumber(aadharNumber)) {
+        // Clean up uploaded files if any
+        if (files) {
+          Object.values(files).forEach(fileArray => {
+            fileArray.forEach(file => deleteFile(file.filename));
+          });
+        }
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid Aadhar number. Must be 12 digits.'
+        });
+      }
+
+      const host = await Host.findById(req.params.id);
+      if (!host) {
+        // Clean up uploaded files
+        if (files) {
+          Object.values(files).forEach(fileArray => {
+            fileArray.forEach(file => deleteFile(file.filename));
+          });
+        }
+        return res.status(404).json({
+          status: 'error',
+          message: 'Host not found'
+        });
+      }
+
+      // Process Aadhar card upload
+      if (files) {
+        try {
+          // Delete old files if they exist and new ones are being uploaded
+          if (files.aadharFront && host.aadharCard?.front?.filename) {
+            deleteFile(host.aadharCard.front.filename);
+          }
+          if (files.aadharBack && host.aadharCard?.back?.filename) {
+            deleteFile(host.aadharCard.back.filename);
+          }
+
+          // Update Aadhar card info
+          if (files.aadharFront) {
+            host.aadharCard = host.aadharCard || {};
+            host.aadharCard.front = {
+              url: files.aadharFront[0].url,
+              filename: files.aadharFront[0].filename,
+              mimeType: files.aadharFront[0].mimetype,
+              uploadDate: new Date()
+            };
+          }
+
+          if (files.aadharBack) {
+            host.aadharCard = host.aadharCard || {};
+            host.aadharCard.back = {
+              url: files.aadharBack[0].url,
+              filename: files.aadharBack[0].filename,
+              mimeType: files.aadharBack[0].mimetype,
+              uploadDate: new Date()
+            };
+          }
+        } catch (fileError) {
+          console.error('Error processing file uploads:', fileError);
+          // Clean up any uploaded files if there was an error
+          Object.values(files).forEach(fileArray => {
+            fileArray.forEach(file => deleteFile(file.filename));
+          });
+          return res.status(500).json({
+            status: 'error',
+            message: 'Error processing file uploads'
+          });
+        }
+      }
+
+      // Update Aadhar number if provided
+      if (aadharNumber) {
+        host.aadharCard = host.aadharCard || {};
+        host.aadharCard.number = aadharNumber;
+      }
+
+      // Reset verification status when Aadhar is updated
+      if (files || aadharNumber) {
+        host.aadharCard.verified = false;
+      }
+
+      await host.save();
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Aadhar card information updated successfully',
+        data: {
+          aadharCard: host.aadharCard
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get Aadhar card info
+router.get('/:id/aadhar-card', async (req, res, next) => {
+  try {
+    const host = await Host.findById(req.params.id, 'aadharCard');
+    if (!host) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Host not found'
+      });
+    }
+
+    if (!host.aadharCard) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Aadhar card not found for this host'
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        aadharCard: host.aadharCard
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Delete Aadhar card
+router.delete('/:id/aadhar-card', async (req, res, next) => {
+  try {
+    const host = await Host.findById(req.params.id);
+    if (!host) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Host not found'
+      });
+    }
+
+    if (!host.aadharCard || (!host.aadharCard.front && !host.aadharCard.back && !host.aadharCard.number)) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'No Aadhar card found for this host'
+      });
+    }
+
+    // Delete files from filesystem
+    try {
+      if (host.aadharCard.front?.filename) {
+        deleteFile(host.aadharCard.front.filename);
+      }
+      if (host.aadharCard.back?.filename) {
+        deleteFile(host.aadharCard.back.filename);
+      }
+    } catch (fileError) {
+      console.error('Error deleting Aadhar card files:', fileError);
+      // Continue with deletion even if file deletion fails
+    }
+
+    try {
+      // Remove Aadhar card data
+      host.aadharCard = {
+        front: null,
+        back: null,
+        number: '',
+        verified: false,
+        verificationDate: null
+      };
+
+      await host.save();
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Aadhar card information deleted successfully'
+      });
+    } catch (dbError) {
+      console.error('Error updating database:', dbError);
+      return res.status(500).json({
+        status: 'error',
+        message: 'Error deleting Aadhar card information from database'
+      });
+    }
+  } catch (error) {
+    console.error('Unexpected error in Aadhar card deletion:', error);
     next(error);
   }
 });

@@ -26,6 +26,12 @@ const HostSchema = new mongoose.Schema({
   auditionVideo: {
     type: mediaSchema,
     default: null
+  },
+  aadharCard: {
+    front: { type: mediaSchema, default: null },
+    back: { type: mediaSchema, default: null },
+    verified: { type: Boolean, default: false },
+    number: { type: String, default: '' }
   }
 }, { timestamps: true });
 
