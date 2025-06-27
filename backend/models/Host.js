@@ -1,4 +1,13 @@
 import mongoose from 'mongoose';
+
+const mediaSchema = new mongoose.Schema({
+  url: String,
+  filename: String,
+  uploadDate: { type: Date, default: Date.now },
+  duration: Number, // Duration in seconds
+  mimeType: String
+});
+
 const HostSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -8,6 +17,19 @@ const HostSchema = new mongoose.Schema({
   password: String,
   bio: String,
   rtmToken: String,
-  rtcToken: String
-});
+  rtcToken: String,
+  profilePhoto: {
+    type: mediaSchema,
+    default: null
+  },
+  additionalPhotos: [mediaSchema],
+  auditionVideo: {
+    type: mediaSchema,
+    default: null
+  }
+}, { timestamps: true });
+
+// Index for faster querying
+HostSchema.index({ email: 1 });
+
 export default mongoose.model('Host', HostSchema);
