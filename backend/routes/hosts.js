@@ -6,7 +6,8 @@ import {
   uploadAuditionVideo, 
   uploadAadharCard,
   handleFileUpload, 
-  checkVideoDuration 
+  checkVideoDuration, 
+  deleteFile 
 } from '../middleware/upload.js';
 import fs from 'fs';
 import path from 'path';
@@ -24,16 +25,16 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// Helper function to delete file
-const deleteFile = (filename) => {
+// Helper function to safely delete file
+const safeDeleteFile = (filename) => {
   if (!filename) return;
-  const filePath = path.join(uploadDir, filename);
-  if (fs.existsSync(filePath)) {
-    try {
+  try {
+    const filePath = path.join(uploadDir, filename);
+    if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
-    } catch (err) {
-      console.error(`Error deleting file ${filename}:`, err);
     }
+  } catch (error) {
+    console.error('Error deleting file:', error);
   }
 };
 
@@ -50,7 +51,7 @@ router.post('/:id/profile-photo', uploadProfilePhoto, handleFileUpload, async (r
     const host = await Host.findById(req.params.id);
     if (!host) {
       // Clean up the uploaded file if host not found
-      fs.unlinkSync(path.join(uploadDir, req.file.filename));
+      safeDeleteFile(req.file.filename);
       return res.status(404).json({ 
         status: 'error',
         message: 'Host not found' 
@@ -59,11 +60,7 @@ router.post('/:id/profile-photo', uploadProfilePhoto, handleFileUpload, async (r
 
     // If there's an existing profile photo, delete it
     if (host.profilePhoto && host.profilePhoto.filename) {
-      try {
-        fs.unlinkSync(path.join(uploadDir, host.profilePhoto.filename));
-      } catch (err) {
-        console.error('Error deleting old profile photo:', err);
-      }
+      safeDeleteFile(host.profilePhoto.filename);
     }
 
     // Update host's profile photo
@@ -104,7 +101,7 @@ router.post('/:id/additional-photos', uploadAdditionalPhotos, handleFileUpload, 
     if (!host) {
       // Clean up uploaded files if host not found
       req.files.forEach(file => {
-        fs.unlinkSync(path.join(uploadDir, file.filename));
+        safeDeleteFile(file.filename);
       });
       return res.status(404).json({ 
         status: 'error',
@@ -180,7 +177,7 @@ router.delete('/:hostId/photos/:photoId', async (req, res, next) => {
 
     // Delete the file from the filesystem
     const photo = host.additionalPhotos[photoIndex];
-    deleteFile(photo.filename);
+    safeDeleteFile(photo.filename);
 
     // Remove from the array
     host.additionalPhotos.splice(photoIndex, 1);
@@ -212,7 +209,7 @@ router.post(
 
       const host = await Host.findById(req.params.id);
       if (!host) {
-        deleteFile(req.file.filename);
+        safeDeleteFile(req.file.filename);
         return res.status(404).json({ 
           status: 'error',
           message: 'Host not found' 
@@ -221,7 +218,7 @@ router.post(
 
       // If there's an existing audition video, delete it
       if (host.auditionVideo && host.auditionVideo.filename) {
-        deleteFile(host.auditionVideo.filename);
+        safeDeleteFile(host.auditionVideo.filename);
       }
 
       // Update host's audition video
@@ -293,7 +290,7 @@ router.delete('/:id/audition-video', async (req, res, next) => {
     }
 
     // Delete the file from the filesystem
-    deleteFile(host.auditionVideo.filename);
+    safeDeleteFile(host.auditionVideo.filename);
 
     // Remove the audition video
     host.auditionVideo = null;
@@ -323,14 +320,26 @@ router.post(
   async (req, res, next) => {
     try {
       const { aadharNumber } = req.body;
-      const files = req.files;
+      const files = req.files || {};
+      
+      // Log received files for debugging (remove in production)
+      console.log('Received files:', JSON.stringify(files, null, 2));
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+      
+      // Ensure files is an object
+      if (!files || typeof files !== 'object') {
+        return res.status(400).json({
+          status: 'error',
+          message: 'No files were uploaded or invalid file format'
+        });
+      }
 
       // Validate request
       if ((!files || !files.aadharFront) && !aadharNumber) {
         // Clean up uploaded files if any
         if (files) {
           Object.values(files).forEach(fileArray => {
-            fileArray.forEach(file => deleteFile(file.filename));
+            fileArray.forEach(file => safeDeleteFile(file.filename));
           });
         }
         return res.status(400).json({
@@ -344,7 +353,7 @@ router.post(
         // Clean up uploaded files if any
         if (files) {
           Object.values(files).forEach(fileArray => {
-            fileArray.forEach(file => deleteFile(file.filename));
+            fileArray.forEach(file => safeDeleteFile(file.filename));
           });
         }
         return res.status(400).json({
@@ -358,7 +367,7 @@ router.post(
         // Clean up uploaded files
         if (files) {
           Object.values(files).forEach(fileArray => {
-            fileArray.forEach(file => deleteFile(file.filename));
+            fileArray.forEach(file => safeDeleteFile(file.filename));
           });
         }
         return res.status(404).json({
@@ -368,42 +377,52 @@ router.post(
       }
 
       // Process Aadhar card upload
-      if (files) {
+      if (files && Object.keys(files).length > 0) {
         try {
           // Delete old files if they exist and new ones are being uploaded
-          if (files.aadharFront && host.aadharCard?.front?.filename) {
-            deleteFile(host.aadharCard.front.filename);
+          if (files.aadharFront && Array.isArray(files.aadharFront) && files.aadharFront[0] && host.aadharCard?.front?.filename) {
+            safeDeleteFile(host.aadharCard.front.filename);
           }
-          if (files.aadharBack && host.aadharCard?.back?.filename) {
-            deleteFile(host.aadharCard.back.filename);
+          if (files.aadharBack && Array.isArray(files.aadharBack) && files.aadharBack[0] && host.aadharCard?.back?.filename) {
+            safeDeleteFile(host.aadharCard.back.filename);
           }
 
           // Update Aadhar card info
-          if (files.aadharFront) {
+          if (files.aadharFront && Array.isArray(files.aadharFront) && files.aadharFront[0]) {
+            const frontFile = files.aadharFront[0];
             host.aadharCard = host.aadharCard || {};
             host.aadharCard.front = {
-              url: files.aadharFront[0].url,
-              filename: files.aadharFront[0].filename,
-              mimeType: files.aadharFront[0].mimetype,
+              url: frontFile.path ? `/${frontFile.path}` : frontFile.url,
+              filename: frontFile.filename,
+              mimeType: frontFile.mimetype,
               uploadDate: new Date()
             };
           }
 
-          if (files.aadharBack) {
+          if (files.aadharBack && Array.isArray(files.aadharBack) && files.aadharBack[0]) {
+            const backFile = files.aadharBack[0];
             host.aadharCard = host.aadharCard || {};
             host.aadharCard.back = {
-              url: files.aadharBack[0].url,
-              filename: files.aadharBack[0].filename,
-              mimeType: files.aadharBack[0].mimetype,
+              url: backFile.path ? `/${backFile.path}` : backFile.url,
+              filename: backFile.filename,
+              mimeType: backFile.mimetype,
               uploadDate: new Date()
             };
           }
         } catch (fileError) {
           console.error('Error processing file uploads:', fileError);
           // Clean up any uploaded files if there was an error
-          Object.values(files).forEach(fileArray => {
-            fileArray.forEach(file => deleteFile(file.filename));
-          });
+          if (files) {
+            Object.values(files).forEach(fileArray => {
+              if (Array.isArray(fileArray)) {
+                fileArray.forEach(file => {
+                  if (file && file.filename) {
+                    safeDeleteFile(file.filename);
+                  }
+                });
+              }
+            });
+          }
           return res.status(500).json({
             status: 'error',
             message: 'Error processing file uploads'

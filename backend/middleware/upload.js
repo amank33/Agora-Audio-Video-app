@@ -3,6 +3,7 @@ import path from 'path';
 import ffmpeg from 'fluent-ffmpeg';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -60,6 +61,12 @@ const upload = multer({
   },
   fileFilter: fileFilter
 });
+
+// Create uploads directory if it doesn't exist
+const uploadDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Middleware to get video duration using ffmpeg
 const getVideoDuration = (filePath) => {
@@ -137,4 +144,53 @@ export const handleFileUpload = (req, res, next) => {
   }
 };
 
-export { checkVideoDuration };
+// Middleware to handle file upload and add file URLs to request
+const handleFileUpload = (req, res, next) => {
+  if (!req.files && !req.file) {
+    return next();
+  }
+
+  // Handle single file
+  if (req.file) {
+    req.file.url = `/uploads/${req.file.filename}`;
+    return next();
+  }
+
+  // Handle multiple files
+  if (req.files) {
+    Object.keys(req.files).forEach(fieldName => {
+      if (Array.isArray(req.files[fieldName])) {
+        req.files[fieldName].forEach(file => {
+          file.url = `/uploads/${file.filename}`;
+        });
+      } else {
+        req.files[fieldName].url = `/uploads/${req.files[fieldName].filename}`;
+      }
+    });
+  }
+  
+  next();
+};
+
+// Configure upload for Aadhar card (front and back)
+const uploadAadharCard = upload.fields([
+  { name: 'aadharFront', maxCount: 1 },
+  { name: 'aadharBack', maxCount: 1 }
+]);
+
+// Function to delete a file
+const deleteFile = (filename) => {
+  if (!filename) return;
+  const filePath = path.join(uploadDir, filename);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+};
+
+export { 
+  checkVideoDuration, 
+  handleFileUpload, 
+  uploadAadharCard, 
+  deleteFile,
+  upload 
+};
