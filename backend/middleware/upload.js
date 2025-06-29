@@ -106,10 +106,11 @@ const checkVideoDuration = async (req, res, next) => {
   }
 };
 
-export const uploadProfilePhoto = upload.single('profilePhoto');
-export const uploadAdditionalPhotos = upload.array('additionalPhotos', 10); // Max 10 files
-export const uploadAuditionVideo = upload.single('auditionVideo');
-export const uploadAadharCard = upload.fields([
+// Configure upload handlers
+const uploadProfilePhoto = upload.single('profilePhoto');
+const uploadAdditionalPhotos = upload.array('additionalPhotos', 10); // Max 10 files
+const uploadAuditionVideo = upload.single('auditionVideo');
+const uploadAadharCard = upload.fields([
   { name: 'aadharFront', maxCount: 1 },
   { name: 'aadharBack', maxCount: 1 }
 ]);
@@ -167,11 +168,7 @@ export const handleFileUpload = (req, res, next) => {
   }
 };
 
-// Configure upload for Aadhar card (front and back)
-const uploadAadharCard = upload.fields([
-  { name: 'aadharFront', maxCount: 1 },
-  { name: 'aadharBack', maxCount: 1 }
-]);
+
 
 // Function to delete a file
 const deleteFile = (filename) => {
@@ -186,6 +183,9 @@ export {
   checkVideoDuration, 
   handleFileUpload, 
   uploadAadharCard, 
+  uploadProfilePhoto,
+  uploadAdditionalPhotos,
+  uploadAuditionVideo,
   deleteFile,
   upload 
 };
