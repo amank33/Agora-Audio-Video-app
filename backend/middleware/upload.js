@@ -114,62 +114,57 @@ export const uploadAadharCard = upload.fields([
   { name: 'aadharBack', maxCount: 1 }
 ]);
 
+// Middleware to handle file upload and add file URLs to request
 export const handleFileUpload = (req, res, next) => {
   if (!req.file && !req.files) {
     return next();
   }
   
   try {
+    // Handle single file
     if (req.file) {
-      // Single file upload
       req.file.url = `/uploads/${req.file.filename}`;
-      // Add mimeType to file object
       req.file.mimeType = req.file.mimetype;
       
-      // If it's a video, add duration if available
+      // Add duration for videos if available
       if (req.file.duration) {
         req.file.duration = req.file.duration;
       }
-    } else if (req.files) {
-      // Multiple files upload
-      req.files = req.files.map(file => ({
-        ...file,
-        url: `/uploads/${file.filename}`,
-        mimeType: file.mimetype
-      }));
+      return next();
     }
+
+    // Handle multiple files (array or fields)
+    if (req.files) {
+      // If it's an array (from upload.array())
+      if (Array.isArray(req.files)) {
+        req.files = req.files.map(file => ({
+          ...file,
+          url: `/uploads/${file.filename}`,
+          mimeType: file.mimetype
+        }));
+      } 
+      // If it's an object with field names (from upload.fields() or similar)
+      else if (typeof req.files === 'object') {
+        Object.keys(req.files).forEach(fieldName => {
+          if (Array.isArray(req.files[fieldName])) {
+            req.files[fieldName].forEach(file => {
+              file.url = `/uploads/${file.filename}`;
+              file.mimeType = file.mimetype;
+            });
+          } else if (req.files[fieldName]) {
+            const file = req.files[fieldName];
+            file.url = `/uploads/${file.filename}`;
+            file.mimeType = file.mimetype;
+          }
+        });
+      }
+    }
+    
     next();
   } catch (error) {
+    console.error('Error in handleFileUpload:', error);
     next(error);
   }
-};
-
-// Middleware to handle file upload and add file URLs to request
-const handleFileUpload = (req, res, next) => {
-  if (!req.files && !req.file) {
-    return next();
-  }
-
-  // Handle single file
-  if (req.file) {
-    req.file.url = `/uploads/${req.file.filename}`;
-    return next();
-  }
-
-  // Handle multiple files
-  if (req.files) {
-    Object.keys(req.files).forEach(fieldName => {
-      if (Array.isArray(req.files[fieldName])) {
-        req.files[fieldName].forEach(file => {
-          file.url = `/uploads/${file.filename}`;
-        });
-      } else {
-        req.files[fieldName].url = `/uploads/${req.files[fieldName].filename}`;
-      }
-    });
-  }
-  
-  next();
 };
 
 // Configure upload for Aadhar card (front and back)
