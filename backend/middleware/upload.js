@@ -116,7 +116,7 @@ const uploadAadharCard = upload.fields([
 ]);
 
 // Middleware to handle file upload and add file URLs to request
-export const handleFileUpload = (req, res, next) => {
+const handleFileUpload = (req, res, next) => {
   if (!req.file && !req.files) {
     return next();
   }
