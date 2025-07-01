@@ -32,7 +32,8 @@ const HostSchema = new mongoose.Schema({
     back: { type: mediaSchema, default: null },
     verified: { type: Boolean, default: false },
     number: { type: String, default: '' }
-  }
+  },
+  knownLanguages: [{ type: String }]
 }, { timestamps: true });
 
 // Index for faster querying

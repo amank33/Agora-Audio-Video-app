@@ -545,4 +545,49 @@ router.delete('/:id/aadhar-card', async (req, res, next) => {
   }
 });
 
+// Update host profile fields (name, gender, dob, bio, knownLanguages)
+router.put('/:id/profile', async (req, res, next) => {
+  try {
+    const { name, gender, dob, bio, knownLanguages } = req.body;
+    const updateFields = {};
+    if (name !== undefined) updateFields.name = name;
+    if (gender !== undefined) updateFields.gender = gender;
+    if (dob !== undefined) updateFields.dob = dob;
+    if (bio !== undefined) updateFields.bio = bio;
+    if (knownLanguages !== undefined) updateFields.knownLanguages = knownLanguages;
+
+    const host = await Host.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateFields },
+      { new: true, runValidators: true }
+    );
+    if (!host) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Host not found'
+      });
+    }
+    res.status(200).json({
+      status: 'success',
+      message: 'Profile updated successfully',
+      data: {
+        host: {
+          _id: host._id,
+          name: host.name,
+          gender: host.gender,
+          dob: host.dob,
+          bio: host.bio,
+          knownLanguages: host.knownLanguages
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      message: error.message || 'Something went wrong!'
+    });
+    next(error);
+  }
+});
+
 export default router;
