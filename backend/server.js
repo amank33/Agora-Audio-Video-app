@@ -19,11 +19,16 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, {});
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// ✅ Serve static files (uploads) — this must come early
+app.use('/uploads', express.static(path.resolve(__dirname, 'uploads')));
 
+// MongoDB connection
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('MongoDB connected'))
+.catch((err) => console.error('MongoDB connection error:', err));
 
 // Routes
 app.use('/auth', authRoutes);
@@ -31,15 +36,15 @@ app.use('/agora', agoraRoutes);
 app.use('/api', usersRoutes);
 app.use('/api/hosts', hostsRoutes);
 
-
-// Error handling middleware
+// Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: err.message || 'Something went wrong!' });
 });
 
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-  console.log(`Upload directory: ${path.join(__dirname, 'uploads')}`);
+  console.log(`✅ Server listening on port ${PORT}`);
+  console.log(`📂 Serving uploads from: ${path.resolve(__dirname, 'uploads')}`);
 });
